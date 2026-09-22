@@ -1,7 +1,5 @@
 #include "rhi_lib_gl.h"
 
-extern bool skip_presenting_duplicate_frames;
-
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -6265,8 +6263,6 @@ void rhi_gl_finalize_frame(const void *fb, unsigned width,
    if (!gl_draw_buffer_is_empty(renderer->command_buffer))
       gl_renderer_draw(renderer);
 
-
-
    /* Shared HD texture tracker frame boundary: process decoded IO
     * responses, rebuild dirty fused pages, run the LRU budgets and the
     * debug hotkeys. Runs after the final flush so every handle handed
@@ -6491,18 +6487,9 @@ void rhi_gl_finalize_frame(const void *fb, unsigned width,
    /* When using a hardware renderer we set the data pointer to
     * -1 to notify the frontend that the frame has been rendered
     * in the framebuffer. */
-   if (skip_presenting_duplicate_frames && !GPU_get_display_change_count())
-   {
-      video_cb(NULL,
-            renderer->frontend_resolution[0],
-            renderer->frontend_resolution[1], 0);
-   }
-   else
-   {
-      video_cb(   RETRO_HW_FRAME_BUFFER_VALID,
-            renderer->frontend_resolution[0],
-            renderer->frontend_resolution[1], 0);
-   }
+   video_cb(   RETRO_HW_FRAME_BUFFER_VALID,
+         renderer->frontend_resolution[0],
+         renderer->frontend_resolution[1], 0);
 }
 
 void rhi_gl_set_tex_window(uint8_t tww, uint8_t twh, uint8_t twx, uint8_t twy)
