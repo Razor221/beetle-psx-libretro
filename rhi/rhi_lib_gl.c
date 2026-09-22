@@ -1,5 +1,7 @@
 #include "rhi_lib_gl.h"
 
+extern bool skip_presenting_duplicate_frames;
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -6264,12 +6266,10 @@ void rhi_gl_finalize_frame(const void *fb, unsigned width,
       gl_renderer_draw(renderer);
 
    {
-      extern bool skip_presenting_duplicate_frames;
       if (skip_presenting_duplicate_frames && !GPU_get_display_change_count())
       {
          /* Drop the frame early to save GPU rendering cost. The dummy callback in retro_run 
           * will still be called (since it wraps rhi_intf_finalize_frame), but we do no work here. */
-         extern retro_video_refresh_t video_cb;
          video_cb(NULL, width, height, 0);
          gl_vram_sync_clear(renderer);
          cleanup_gl_state();

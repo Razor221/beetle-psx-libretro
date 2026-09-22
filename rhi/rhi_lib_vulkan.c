@@ -9,6 +9,8 @@
 
 #include "rhi_lib_vulkan.h"
 
+extern bool skip_presenting_duplicate_frames;
+
 #include "rhi_intf.h" /* FPS and audio sample rate macros */
 #include "rhi_defer.h"
 #include "tt_trace.h"
@@ -20198,7 +20200,6 @@ void rhi_vulkan_finalize_frame(const void *fb, unsigned width,
 
    tt_frame_advance();
 
-   extern bool skip_presenting_duplicate_frames;
    if ((frame_duping_enabled || skip_presenting_duplicate_frames) && !GPU_get_display_change_count())
    {
       /* Any visual core option changes will be deferred to next non-duped frame */
