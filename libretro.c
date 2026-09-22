@@ -123,6 +123,7 @@ static unsigned internal_frame_count = 0;
 static bool display_internal_framerate = false;
 static bool display_notifications = true;
 static bool allow_frame_duping = false;
+static bool skip_presenting_duplicate_frames = false;
 static unsigned image_offset = 0;
 static unsigned image_crop = 0;
 static bool enable_memcard1 = false;
@@ -5480,6 +5481,17 @@ static void check_variables(bool startup)
    else
       allow_frame_duping = false;
 
+   var.key = BEETLE_OPT(skip_presenting_duplicate_frames);
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (strcmp(var.value, "enabled") == 0)
+         skip_presenting_duplicate_frames = true;
+      else if (strcmp(var.value, "disabled") == 0)
+         skip_presenting_duplicate_frames = false;
+   }
+   else
+      skip_presenting_duplicate_frames = false;
+
    var.key = BEETLE_OPT(display_internal_fps);
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -6314,6 +6326,8 @@ static bool retro_set_system_av_info(void)
 void retro_run(void)
 {
    bool updated = false;
+   static unsigned skipped_frames = 0;
+   const unsigned MAX_SKIPPED_DUPLICATE_FRAMES = 10;
    static int32_t rects[MEDNAFEN_CORE_GEOMETRY_MAX_H];
    EmulateSpecStruct spec = {0};
    EmulateSpecStruct *espec;
@@ -6532,6 +6546,8 @@ void retro_run(void)
       FrontIO_SetAMCT(PSX_FIO, setting_psx_analog_toggle);
       setting_apply_analog_toggle = false;
    }
+
+retry_frame:
 
    if (input_poll_cb)
       input_poll_cb();
@@ -6802,6 +6818,25 @@ void retro_run(void)
             || (currently_interlaced || PrevInterlaced)
             || !allow_frame_duping)
          fb = pix;
+   }
+
+   {
+      bool is_dupe = !(GPU_get_display_possibly_dirty() || GPU_get_display_change_count() || currently_interlaced || PrevInterlaced);
+      bool vcd_active = (VCD_GetMode() != VCD_MODE_OFF && VCD_GetAVSwitch());
+      
+      if (skip_presenting_duplicate_frames && is_dupe && !vcd_active && skipped_frames < MAX_SKIPPED_DUPLICATE_FRAMES)
+      {
+         skipped_frames++;
+         
+         if (audio_batch_cb)
+            audio_batch_cb(&IntermediateBuffer[0][0], spec.SoundBufSize);
+            
+         GPU_set_display_change_count(0);
+         GPU_set_display_possibly_dirty(false);
+         
+         goto retry_frame;
+      }
+      skipped_frames = 0;
    }
 
    /* Video CD output substitution.
