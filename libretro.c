@@ -105,6 +105,7 @@ bool gpu_fbwrite_fifo_delay = false;
  * libretro_cbs.h; assigned by retro_set_environment / retro_set_video_refresh
  * below. */
 retro_video_refresh_t video_cb = NULL;
+static void dummy_video_cb(const void *data, unsigned width, unsigned height, size_t pitch) {}
 retro_environment_t environ_cb = NULL;
 
 static bool libretro_supports_option_categories = false;
@@ -6826,8 +6827,16 @@ retry_frame:
       
       if (skip_presenting_duplicate_frames && is_dupe && !vcd_active && skipped_frames < MAX_SKIPPED_DUPLICATE_FRAMES)
       {
+         retro_video_refresh_t orig_video_cb;
          skipped_frames++;
          
+         /* Finalize the frame silently so HW renderer flushes commands properly.
+          * We use a dummy video callback so it doesn't present to the frontend. */
+         orig_video_cb = video_cb;
+         retro_set_video_refresh(dummy_video_cb);
+         rhi_intf_finalize_frame(fb, width, height, MEDNAFEN_CORE_GEOMETRY_MAX_W << (2 + upscale_shift));
+         retro_set_video_refresh(orig_video_cb);
+
          if (audio_batch_cb)
             audio_batch_cb(&IntermediateBuffer[0][0], spec.SoundBufSize);
             
