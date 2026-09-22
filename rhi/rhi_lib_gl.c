@@ -6265,17 +6265,7 @@ void rhi_gl_finalize_frame(const void *fb, unsigned width,
    if (!gl_draw_buffer_is_empty(renderer->command_buffer))
       gl_renderer_draw(renderer);
 
-   {
-      if (skip_presenting_duplicate_frames && !GPU_get_display_change_count())
-      {
-         /* Drop the frame early to save GPU rendering cost. The dummy callback in retro_run 
-          * will still be called (since it wraps rhi_intf_finalize_frame), but we do no work here. */
-         video_cb(NULL, width, height, 0);
-         gl_vram_sync_clear(renderer);
-         cleanup_gl_state();
-         return;
-      }
-   }
+
 
    /* Shared HD texture tracker frame boundary: process decoded IO
     * responses, rebuild dirty fused pages, run the LRU budgets and the
@@ -6501,9 +6491,18 @@ void rhi_gl_finalize_frame(const void *fb, unsigned width,
    /* When using a hardware renderer we set the data pointer to
     * -1 to notify the frontend that the frame has been rendered
     * in the framebuffer. */
-   video_cb(   RETRO_HW_FRAME_BUFFER_VALID,
-         renderer->frontend_resolution[0],
-         renderer->frontend_resolution[1], 0);
+   if (skip_presenting_duplicate_frames && !GPU_get_display_change_count())
+   {
+      video_cb(NULL,
+            renderer->frontend_resolution[0],
+            renderer->frontend_resolution[1], 0);
+   }
+   else
+   {
+      video_cb(   RETRO_HW_FRAME_BUFFER_VALID,
+            renderer->frontend_resolution[0],
+            renderer->frontend_resolution[1], 0);
+   }
 }
 
 void rhi_gl_set_tex_window(uint8_t tww, uint8_t twh, uint8_t twx, uint8_t twy)
