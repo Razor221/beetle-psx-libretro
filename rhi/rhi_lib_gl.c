@@ -6263,6 +6263,20 @@ void rhi_gl_finalize_frame(const void *fb, unsigned width,
    if (!gl_draw_buffer_is_empty(renderer->command_buffer))
       gl_renderer_draw(renderer);
 
+   {
+      extern bool skip_presenting_duplicate_frames;
+      if (skip_presenting_duplicate_frames && !GPU_get_display_change_count())
+      {
+         /* Drop the frame early to save GPU rendering cost. The dummy callback in retro_run 
+          * will still be called (since it wraps rhi_intf_finalize_frame), but we do no work here. */
+         extern retro_video_refresh_t video_cb;
+         video_cb(NULL, width, height, 0);
+         gl_vram_sync_clear(renderer);
+         cleanup_gl_state();
+         return;
+      }
+   }
+
    /* Shared HD texture tracker frame boundary: process decoded IO
     * responses, rebuild dirty fused pages, run the LRU budgets and the
     * debug hotkeys. Runs after the final flush so every handle handed

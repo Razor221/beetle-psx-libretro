@@ -124,7 +124,7 @@ static unsigned internal_frame_count = 0;
 static bool display_internal_framerate = false;
 static bool display_notifications = true;
 static bool allow_frame_duping = false;
-static bool skip_presenting_duplicate_frames = false;
+bool skip_presenting_duplicate_frames = false;
 static unsigned image_offset = 0;
 static unsigned image_crop = 0;
 static bool enable_memcard1 = false;
@@ -6373,6 +6373,8 @@ void retro_run(void)
     * synchronous video-driver reinit runs between frames. */
    rhi_intf_apply_pending_geometry();
 
+retry_frame:
+
    rhi_intf_prepare_frame();
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
@@ -6547,8 +6549,6 @@ void retro_run(void)
       FrontIO_SetAMCT(PSX_FIO, setting_psx_analog_toggle);
       setting_apply_analog_toggle = false;
    }
-
-retry_frame:
 
    if (input_poll_cb)
       input_poll_cb();
